@@ -32,7 +32,7 @@ schools = [
         "base_url": "http://hitee.hit.edu.cn",
         "list_url": "http://hitee.hit.edu.cn/17037/list.htm",
         "pattern": r'<a href="(http://homepage\.hit\.edu\.cn/[^"]+)"[^>]*>([^<]+)</a>',
-        "url_format": lambda url: url  # 完整URL无需处理
+        "url_format": lambda url: url
     },
     {
         "name": "复旦大学新科学与工程学院电子工程系",
@@ -43,6 +43,48 @@ schools = [
         "pattern": r'<a[^>]*href="/Data/View/(\d+)"[^>]*>\s*([^<]+)\s*</a>',
         "url_format": lambda url: f"http://ee.fudan.edu.cn/Data/View/{url}"
     },
+    {
+        "name": "东华大学信息科学与技术学院电气电子工程系",
+        "base_url": "https://web.dhu.edu.cn",
+        "list_url": "https://web.dhu.edu.cn/cist/dqdzgcx/list.htm",
+        "pattern": r'<a href="(http://web\.dhu\.edu\.cn/cist/\d+/\d+/c\d+a\d+/page\.htm)"[^>]*>([^<]+)</a>',
+        "url_format": lambda url: url.replace("http://", "https://")
+    },
+    {
+        "name": "东南大学电气工程学院",
+        "base_url": "https://ee.seu.edu.cn",
+        "list_url": "https://ee.seu.edu.cn/szdw/list.htm",
+        "pattern": r'<a href="(http://ee\.seu\.edu\.cn/\d+/\d+/c\d+a\d+/page\.htm)"[^>]*>(?:<span[^>]*>)?([^<]+)(?:</span>)?</a>',
+        "url_format": lambda url: url
+    },
+    {
+        "name": "河海大学电气与动力工程学院",
+        "base_url": "https://ceee.hhu.edu.cn",
+        "list_url": "https://ceee.hhu.edu.cn/12805/list.htm",
+        "pattern": r'<a href="(http://jszy\.hhu\.edu\.cn/[^/]+/)"[^>]*>([^<]+)</a>',
+        "url_format": lambda url: url
+    },
+    {
+        "name": "南京师范大学电气与自动化工程学院",
+        "base_url": "http://eae.njnu.edu.cn",
+        "list_url": "http://eae.njnu.edu.cn/xygk/szdw1.htm",
+        "pattern": r'<td><a href="\.\./([^"]+)" title="([^"]+)">',
+        "url_format": lambda url: f"http://eae.njnu.edu.cn/{url}"
+    },
+    {
+        "name": "合肥工业大学电气与自动化工程学院",
+        "base_url": "https://ea.hfut.edu.cn",
+        "list_url": "https://ea.hfut.edu.cn/list_xszx.jsp?urltype=tree.TreeTempUrl&wbtreeid=1165",
+        "pattern": r'<a href="(http://faculty\.hfut\.edu\.cn/[^/]+/zh_CN/index\.htm)"[^>]*>([^<]+)</a>',
+        "url_format": lambda url: url
+    },
+    {
+        "name": "武汉大学电气与自动化学院",
+        "base_url": "https://eea.whu.edu.cn",
+        "list_url": "https://eea.whu.edu.cn/szdw/jsdw/dqgcx.htm",
+        "pattern": r'<a href="\.\.\/\.\.\/(info/\d+/\d+\.htm)">([^<]+)</a>',
+        "url_format": lambda url: f"https://eea.whu.edu.cn/{url}"
+    }
 ]
 
 def log_message(message, log_file):
