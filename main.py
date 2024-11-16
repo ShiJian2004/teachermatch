@@ -1,6 +1,8 @@
 import re
 import requests
 import os
+import queue
+import threading
 from bs4 import BeautifulSoup
 from datetime import datetime
 
@@ -87,12 +89,17 @@ schools = [
     }
 ]
 
+# 创建线程安全的日志写入函数
+log_lock = threading.Lock()
+output_lock = threading.Lock()
+
 def log_message(message, log_file):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_line = f"[{timestamp}] {message}\n"
-    print(log_line.strip())
-    log_file.write(log_line)
-    log_file.flush()
+    with log_lock:
+        print(log_line.strip())
+        log_file.write(log_line)
+        log_file.flush()
 
 def get_html_content(url, log_file):
     try:
@@ -175,42 +182,57 @@ def check_honors(html_content, name, log_file):
     
     return honors
 
-def process_school(school, log_file, output_file):
+def process_teacher(school, url_part, name, log_file, output_file):
+    full_url = school['url_format'](url_part)
+    
+    log_message(f"处理教师: {name}, URL: {full_url}", log_file)
+    teacher_html = get_html_content(full_url, log_file)
+    
+    if not teacher_html:
+        with output_lock:
+            output_file.write(f"{school['name']} - {name}：获取信息失败\n")
+            output_file.flush()
+        return
+    
+    honors = check_honors(teacher_html, name, log_file)
+    with output_lock:
+        if honors:
+            honor_text = '、'.join(honors)
+            output_file.write(f"{school['name']} - {name}：{honor_text}\n")
+        else:
+            output_file.write(f"{school['name']} - {name}：无\n")
+        output_file.flush()
+
+def worker(task_queue, log_file, output_file):
+    while True:
+        try:
+            task = task_queue.get_nowait()
+            if task is None:
+                break
+            school, url_part, name = task
+            process_teacher(school, url_part, name, log_file, output_file)
+        except queue.Empty:
+            break
+        finally:
+            task_queue.task_done()
+
+def process_school(school, task_queue, log_file):
     log_message(f"开始处理 {school['name']}", log_file)
     
-    # 处理多个列表URL的情况
     list_urls = school['list_url'] if isinstance(school['list_url'], list) else [school['list_url']]
     
     for list_url in list_urls:
         html_content = get_html_content(list_url, log_file)
         if not html_content:
             continue
-            
+        
         matches = re.findall(school['pattern'], html_content)
         log_message(f"在 {list_url} 中找到 {len(matches)} 位教师", log_file)
         
         for match in matches:
             if len(match) != 2:
                 continue
-                
-            url_part, name = match
-            full_url = school['url_format'](url_part)
-            
-            log_message(f"处理教师: {name}, URL: {full_url}", log_file)
-            teacher_html = get_html_content(full_url, log_file)
-            
-            if not teacher_html:
-                output_file.write(f"{school['name']} - {name}：获取信息失败\n")
-                continue
-            
-            honors = check_honors(teacher_html, name, log_file)
-            if honors:
-                honor_text = '、'.join(honors)
-                output_file.write(f"{school['name']} - {name}：{honor_text}\n")
-            else:
-                output_file.write(f"{school['name']} - {name}：无\n")
-            
-            output_file.flush()
+            task_queue.put((school, match[0], match[1]))
 
 def main():
     desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
@@ -222,8 +244,24 @@ def main():
         
         log_message("程序开始执行", log_file)
         
+        # 创建任务队列
+        task_queue = queue.Queue()
+        
+        # 收集所有任务
         for school in schools:
-            process_school(school, log_file, output_file)
+            process_school(school, task_queue, log_file)
+        
+        # 创建4个工作线程
+        threads = []
+        for _ in range(4):
+            task_queue.put(None)  # 添加结束标记
+            t = threading.Thread(target=worker, args=(task_queue, log_file, output_file))
+            t.start()
+            threads.append(t)
+        
+        # 等待所有线程完成
+        for t in threads:
+            t.join()
             
         log_message("程序执行完成", log_file)
 
